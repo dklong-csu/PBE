@@ -1,0 +1,4 @@
+codegen/
+*.mat
+*.asv
+*.mex*
