@@ -1,5 +1,10 @@
 function dfdy = PBElib_Jacobian(~,y,settings) %#codegen
+%PBELIB_JACOBIAN FIXME WRITE DOCS
     dfdy = zeros(settings.vecSize);
+
+    binSizes = reshape(settings.pBins,numel(settings.pBins),1); %  make sure it's a column vector 
+    w1 = (binSizes-1) ./ binSizes;
+    w2 = 1 ./ binSizes;
 
     %   Chemical reactions
     [n_rxnrows, ~] = size(settings.A);
@@ -22,12 +27,17 @@ function dfdy = PBElib_Jacobian(~,y,settings) %#codegen
         %   Particle Growth
         %   A + Pi -> Pi+1 + L
         %       For A and Piii
+        
         if iii==settings.gidx
             %   A * sum(Pi*G) -> sum(Pi*G)
             dGrowthdy = y(settings.pstart:settings.pend) .* settings.gKernel';
+            %   Loss in particles
             dfdy(settings.pstart:settings.pend, iii) = dfdy(settings.pstart:settings.pend, iii) - dGrowthdy;
-            dfdy(settings.pstart+1:settings.pend, iii) = dfdy(settings.pstart+1:settings.pend, iii) + dGrowthdy(1:end-1);
-            dfdy(settings.gRxnIdx, iii) = dfdy(settings.gRxnIdx, iii) - settings.gRxnCoeff' .* sum(dGrowthdy);
+            %   Gain in particles
+            dfdy(settings.pstart+1:settings.pend, iii) = dfdy(settings.pstart+1:settings.pend, iii) +   w2(1:end-1).*dGrowthdy(1:end-1);
+            dfdy(settings.pstart:settings.pend-1, iii) = dfdy(settings.pstart:settings.pend-1, iii) +   w1(1:end-1).*dGrowthdy(1:end-1);
+            %   Gain/loss in chemical species
+            dfdy(settings.gRxnIdx, iii) = dfdy(settings.gRxnIdx, iii) - settings.gRxnCoeff .* sum(dGrowthdy);
         elseif (iii >= settings.pstart) && (iii <= settings.pend)
             %   A * Piii*Giii -> A * Giii
             %   A (neg)
@@ -39,7 +49,7 @@ function dfdy = PBElib_Jacobian(~,y,settings) %#codegen
             if iii < settings.pend
                 dfdy(iii+1,iii) = dfdy(iii+1,iii) + dGrowthdy;
             end
-            dfdy(settings.gRxnIdx, iii) = dfdy(settings.gRxnIdx, iii) - settings.gRxnCoeff' * dGrowthdy;
+            dfdy(settings.gRxnIdx, iii) = dfdy(settings.gRxnIdx, iii) - settings.gRxnCoeff * dGrowthdy;
         end
 
         %   Particle Agglomeration
@@ -86,9 +96,9 @@ function dfdy = PBElib_Jacobian(~,y,settings) %#codegen
         diamM = settings.emomBigParticleDiam; 
         
         % flux = 3 * k_inflow * ( settings.cutoff ^ (2/3) ) * y(idx_mu0-1) / delx / k_emom;
-        flux = nthroot(9*pi / 1, 3) * k_inflow * ( (settings.pend-1) ^ (2/3) ) * y(idx_mu0-1) / delx / k_emom;
+        flux = nthroot(9*pi / 1, 3) * k_inflow * ( (settings.pend-1) ^ (2/3) ) * w2(end)*y(idx_mu0-1) / delx / k_emom;
         % dfluxdP = 3 * k_inflow * ( settings.cutoff ^ (2/3) ) / delx / k_emom;
-        dfluxdP = nthroot(9*pi / 1, 3) * k_inflow * ( (settings.pend-1) ^ (2/3) ) / delx / k_emom;
+        dfluxdP = nthroot(9*pi / 1, 3) * k_inflow * ( (settings.pend-1) ^ (2/3) ) * w2(end) / delx / k_emom;
 
         %   Chemical species
         %   FIXME
