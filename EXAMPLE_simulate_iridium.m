@@ -1,12 +1,10 @@
 clc
 clear variables
-close all
+% close all
 
 %%  Example script solving an Iridium system
-use_jac = false;     %   Use analytic Jacobian (much faster)
-use_mex = true;     %   Compile functions (a bit faster)
-time_solve = false;  %   Time the ODE solve?
-regen_mex = false;  %   Does the mex function need to be recompiled? (Needed if vector/matrix sizes change)
+use_jac = true;     %   Use analytic Jacobian (much faster)
+time_solve = true;  %   Time the ODE solve?
 use_emom = false;
 
 %--------------------------------------------------------------------------
@@ -20,12 +18,35 @@ save_data = false;   %   False if you don't need to save data for some reason
 saveFileName = "DATA_iridium_2500.mat";
 
 %--------------------------------------------------------------------------
+%   Mechanism modeled
+%       FIXME more detail
+%   A ->[kf*S*S] As + L
+%   As + L ->[kb] A
+%   A + 2As ->[k1] P3 + L
+%   A + Pi ->[G(k2,k3,M)*r(i)] Pi+1 + L
+%   (agglom FIXME)
+%--------------------------------------------------------------------------
+
+kb = 1.37e5;
+kf = 5e-7*kb;
+k1 = 7.69e4;
+k2 = 1.4e4;
+k3 = 7.15e3;
+k4 = 1.74e3;
+M = 111; 
+S = 11.3;
+
+%--------------------------------------------------------------------------
 %   Maximum particle size in number of atoms
 %       Parameters below are fit to maxsize=2500
 %   Conversion function from # atoms -> diameter
 %   Final time to simulate to
 %--------------------------------------------------------------------------
-maxsize = 2500;
+if use_emom
+    maxsize = 2*M;
+else 
+    maxsize = 2500;
+end
 firstsize = 3;
 atoms2diam = @(a) 0.3000805 * nthroot(a,3);
 T = 10.0;
@@ -37,23 +58,7 @@ reductionAmount = 0.0;
 fcn_reduceVal = atoms2diam; % If reducing based on a different criteria, change this
 fcn_reduceValInv = @(d) (d/0.3000805) .^ 3; % inverse function to above fcn
 
-%--------------------------------------------------------------------------
-%   Mechanism modeled
-%       FIXME more detail
-%   A ->[kf*S*S] As + L
-%   As + L ->[kb] A
-%   A + 2As ->[k1] P3 + L
-%   A + Pi ->[G(k2,k3,M)*r(i)] Pi+1 + L
-%   (agglom FIXME)
-%--------------------------------------------------------------------------
-kb = 1.37e5;
-kf = 5e-7*kb;
-k1 = 7.69e4;
-k2 = 1.4e4;
-k3 = 7.15e3;
-k4 = 1.74e3;
-M = 111;
-S = 11.3;
+
 
 %--------------------------------------------------------------------------
 %   Growth and agglomeration kernels at bottom of file
@@ -142,18 +147,12 @@ mySettings = PBElib_MakeSettings(A=A,...
 y0 = zeros(mySettings.vecSize,1);
 y0(1) = 0.0012;
 
-%   Recompile functions with new vector size
-if regen_mex
-    fprintf("Compiling right hand side function\n\t")
-    codegen -report PBElib_RHS.m -args {0.0, y0, mySettings}
-    fprintf("Compiling Jacobian function\n\t")
-    codegen -report PBElib_Jacobian.m -args {0.0, y0, mySettings}
-end
-
 %   ODE solve
-sol = PBElib_solveODEs(mySettings, y0, T, use_mex, use_jac);
+
+sol = PBElib_solveODEs(mySettings, y0, T, use_jac);
+
 if time_solve
-    fcn_time = @() PBElib_solveODEs(mySettings, y0, T, use_mex, use_jac);
+    fcn_time = @() PBElib_solveODEs(mySettings, y0, T, use_jac);
     time_to_solve = timeit(fcn_time);
     fprintf("The ODEs take %.2fs to solve on average\n",time_to_solve)
 end
@@ -181,7 +180,7 @@ ax = gca;
 h = animatedline('LineStyle','-',...
     'Marker','none',...
     'LineWidth',2);
-axis([0,atoms2diam(maxsize),0,Inf])
+axis([0,max(5,atoms2diam(maxsize)),0,Inf])
 n_times = 10;
 plotpts = linspace(0,T,n_times+1);
 plotpts = plotpts(2:end);

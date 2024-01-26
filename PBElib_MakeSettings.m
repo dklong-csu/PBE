@@ -67,6 +67,8 @@ end
 %       emomDelx
 %       emomGrowthRate
 %       emomBigParticleDiam
+%       avgPSize
+%       dSize
 %--------------------------------------------------------------------------
 
     
@@ -94,6 +96,10 @@ while binMax < options.atoms(end) && binIdx < length(options.atoms)
     binMax = floor(options.fcn_reduceValInv( ...
                     tol * options.fcn_reduceVal( pBins(binIdx) )...
                     ) );
+    %   Don't jump over aggregation cutoff point
+    if pBins(binIdx) <= options.cutoff
+        binMax = min(binMax, options.cutoff);
+    end
     %   Next starts at one more
     binMax = binMax+1;
     binMax = max(binMax, pBins(binIdx)+1);
@@ -101,9 +107,15 @@ while binMax < options.atoms(end) && binIdx < length(options.atoms)
     binIdx = binIdx + 1;
     pBins(binIdx) = binMax;
 end
-pBins(binIdx+1) = pBins(binIdx)+1;
+biggerThanCutoff = find(pBins > options.cutoff);
+maxAgglomBin = biggerThanCutoff(1);
+pBins(binIdx+1) = max(pBins(binIdx)+1, (pBins(maxAgglomBin)-1)*2);
 pBins = pBins(1:binIdx+1);
 avgPSize = round( 0.5*pBins(1:end-1) + 0.5*(pBins(2:end)-1) );
+settings.avgPSize = avgPSize;
+settings.sizes = options.fcn_atoms2size(avgPSize);
+dsizes = settings.sizes - options.fcn_atoms2size(avgPSize-1);
+settings.dsizes = dsizes;
 
 %   Vector indexing
 nParticles = length(pBins)-1;
@@ -126,24 +138,25 @@ settings.gRxnCoeff = reshape(options.gRxnCoeff, length(options.gRxnCoeff),1);
 %--------------------------------------------------------------------------
 %   Particle aggregation
 %--------------------------------------------------------------------------
+settings.cutoff = settings.pstart + biggerThanCutoff(1) - 2;
 
-biggerThanCutoff = find(pBins > options.cutoff);
-settings.cutoff = settings.pstart + biggerThanCutoff(1) - 1;
-
-
-%   This function is really slow if you don't compile it
-% fprintf("Compiling binning function\n\t")
-% codegen -report PBElib_CalcAggregationBins.m -args {1, 1, pBins}
 tic
-nAggrBins = biggerThanCutoff(1);
-aggregationMap = cell(nAggrBins,nAggrBins);
+nAggrBins = biggerThanCutoff(1)-1;
+aggregationMap = dictionary;
 aggregationKernel = zeros(nAggrBins,nAggrBins);
 for iii=1:nAggrBins
     for jjj=iii:nAggrBins
         [createdIdx, createdPercent] = PBElib_CalcAggregationBins(iii,jjj,pBins,settings.pstart);
-        aggregationMap{iii,jjj} = [createdIdx, createdPercent];
-        aggregationMap{jjj,iii} = [createdIdx, createdPercent];
-
+        for k=1:length(createdIdx)
+            key=createdIdx(k);
+            if isConfigured(aggregationMap) && isKey(aggregationMap,key)
+                val = aggregationMap{key};
+            else
+                val = sparse(nAggrBins,nAggrBins);
+            end
+            val(jjj,iii) = createdPercent(k);   %   fixme?
+            aggregationMap(key) = {val};
+        end
         aggregationKernel(iii,jjj) = options.fcn_akern(avgPSize(iii),avgPSize(jjj));
         aggregationKernel(jjj,iii) = aggregationKernel(iii,jjj);
     end
@@ -160,4 +173,5 @@ settings.emomInflowRate = options.emomInflowRate;
 settings.emomDelx = options.emomDelx;
 settings.emomGrowthRate = options.emomGrowthRate;
 settings.emomBigParticleDiam = options.fcn_atoms2size(pBins(end));
+
 end

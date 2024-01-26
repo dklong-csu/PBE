@@ -1,5 +1,6 @@
 function dy = PBElib_RHS(~,y,settings) %#codegen
 %PBELIB_RHS FIXME WRITE DOCS
+
 dy = zeros(length(y),1);
 
 %--------------------------------------------------------------------------
@@ -32,69 +33,28 @@ dy(settings.pstart:settings.pend) = dy(settings.pstart:settings.pend) ...
 dy(settings.gRxnIdx) = dy(settings.gRxnIdx) - settings.gRxnCoeff .* sum(dGrowth);
 
 
-% pstart = settings.pstart;
-% pend = settings.pend;
-% dGrowth = y(settings.gidx) * y(pstart:pend) .* settings.gKernel';
-% binSizes = reshape(settings.pBins,numel(settings.pBins),1); %  make sure it's a column vector 
-% w1 = (binSizes-1) ./ binSizes;
-% w2 = 1 ./ binSizes;
-% %   Loss due to reaction
-% dy(pstart:pend) = dy(pstart:pend) - dGrowth;
-% %   Gain due to reaction
-% dy(pstart+1:pend) = dy(pstart+1:pend) + w2(1:end-1) .* dGrowth(1:end-1);
-% dy(pstart:pend) = dy(pstart:pend) + w1(1:end) .* dGrowth(1:end);
-% dy(settings.gRxnIdx) = dy(settings.gRxnIdx) - settings.gRxnCoeff' .* sum(dGrowth);
-
-
 %--------------------------------------------------------------------------
 %   Particle aggregation
 %--------------------------------------------------------------------------
 aggregIdx = settings.pstart:settings.cutoff;
-for iii=1:length(aggregIdx)
-    for jjj=iii:length(aggregIdx)
-        createdIdx = settings.aggrInfo{iii,jjj}(:,1);
-        createdWeight = settings.aggrInfo{iii,jjj}(:,2);
-        %   Loss due to Piii+Pjjj
-        if iii==jjj
-            rate = y( aggregIdx(iii) )^2 * settings.aKernel(iii,jjj);
-            dy( aggregIdx(iii) ) = dy( aggregIdx(iii) ) ...
-                - ( 1 + 1/binSizes(iii)) * rate;
-        else
-            rate = y( aggregIdx(iii) ) * y( aggregIdx(jjj) ) * settings.aKernel(iii,jjj);
-            dy( aggregIdx(iii) ) = dy( aggregIdx(iii) ) - rate;
-            dy( aggregIdx(jjj) ) = dy( aggregIdx(jjj) ) - rate;
-        end
-        %   Created particles
-        dy( createdIdx ) = dy( createdIdx ) + rate * createdWeight;
-    end
+aggrRates = y(aggregIdx) * y(aggregIdx)';
+aggrRates = aggrRates .* settings.aKernel;
+aggrRates = tril(aggrRates);
+%---------------------------------------------------
+%   aggrRates = [aij*yi*yj] (on lower triangle only)
+%   --> gives rxn rate for every Pi+Pj agglomeration
+%   --> sum accross columns gives total for each Pi
+%---------------------------------------------------
+dy(aggregIdx) = dy(aggregIdx) - sum(aggrRates,2);
+dy(aggregIdx) = dy(aggregIdx) - (1./binSizes(1:length(aggregIdx))) .* diag(aggrRates);
+%---------------------------------------------------
+%   For created particles, need to retrieve information
+%   of how many of each bin are created for each Pi+Pj
+%---------------------------------------------------
+for key=keys(settings.aggrInfo)
+    weights = settings.aggrInfo{key};
+    dy(key) = dy(key) + sum(weights.*aggrRates,"all");
 end
-% for iii=pstart:settings.cutoff
-%     idxiii = iii-pstart+1;
-%     for jjj=iii:settings.cutoff
-%         idxjjj = jjj-pstart+1;
-%         %   Pi + Pj ->
-%         sizeiii = iii-1; %fixme
-%         sizejjj = jjj-1; %fixme
-%         agglomInfo = settings.aMapping{idxiii,idxjjj};
-%         idxCreated = agglomInfo(:,1);
-%         weightCreated = agglomInfo(:,2);
-%         created = sizejjj + sizeiii + 1; %fixme
-%         dAggl = y(iii) * y(jjj) .* settings.aKernel(idxiii,idxjjj);
-%         %   Loss Pi
-%         dy(iii) = dy(iii) - dAggl;
-%         %   Loss Pj
-%         if jjj==iii
-%             dy(jjj) = dy(jjj) - binSizes(idxiii)*dAggl;
-%         else
-%             dy(jjj) = dy(jjj) - dAggl;
-%         end
-%         %   Gain wkPk
-%         dy(idxCreated) = dy(idxCreated) + weightCreated.*dAggl;
-%         % dy(iii) = dy(iii) - sum(dAggl);
-%         % dy(jjj) = dy(jjj) - dAggl;
-%         % dy(created) = dy(created) + dAggl;
-%     end
-% end
 
 
 %--------------------------------------------------------------------------
@@ -112,8 +72,7 @@ if settings.useEMoM == true
     k_emom = settings.emomGrowthRate; 
     diamM = settings.emomBigParticleDiam; 
     
-    % flux = 3 * k_inflow * ( (settings.pend-1) ^ (2/3) ) * y(idx_mu0-1) / delx / k_emom;
-    flux = nthroot(9*pi / 1, 3) * k_inflow * ( (settings.pBins(end)) ^ (2/3) ) * w2(end)*y(idx_mu0-1) / delx / k_emom;
+    flux = nthroot(9*pi / 1, 3) * k_inflow * ( (settings.pBins(end)-1) ^ (2/3) ) * w2(end)*y(idx_mu0-1) / delx / k_emom;
     
     %   Effect on chemical species due to growth reaction
     %   FIXME 8/9 and so on hardcoded

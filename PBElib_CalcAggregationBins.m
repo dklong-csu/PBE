@@ -89,8 +89,9 @@ function [idx,weight] = PBElib_CalcAggregationBins(i,j,pBins,idxBin1) %#codegen
     %   Total combinations = lenI * lenJ
     %   Percentage = newBins / (lenI * lenJ)
     %   We only need the non-zero ones
-    idx = find(newBins > 0) + idxBin1 -1;
+    idx = find(newBins > 0);
     weight = newBins(idx);
+    idx = idx + idxBin1 - 1;
     weight = weight / lenI / lenJ;
 
 end
