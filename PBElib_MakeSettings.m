@@ -109,7 +109,7 @@ while binMax < options.atoms(end) && binIdx < length(options.atoms)
 end
 biggerThanCutoff = find(pBins > options.cutoff);
 maxAgglomBin = biggerThanCutoff(1);
-pBins(binIdx+1) = max(pBins(binIdx)+1, (pBins(maxAgglomBin)-1)*2);
+pBins(binIdx+1) = max(pBins(binIdx)+1, (pBins(maxAgglomBin)-1)*2+1);
 pBins = pBins(1:binIdx+1);
 avgPSize = round( 0.5*pBins(1:end-1) + 0.5*(pBins(2:end)-1) );
 settings.avgPSize = avgPSize;
@@ -140,7 +140,6 @@ settings.gRxnCoeff = reshape(options.gRxnCoeff, length(options.gRxnCoeff),1);
 %--------------------------------------------------------------------------
 settings.cutoff = settings.pstart + biggerThanCutoff(1) - 2;
 
-tic
 nAggrBins = biggerThanCutoff(1)-1;
 aggregationMap = dictionary;
 aggregationKernel = zeros(nAggrBins,nAggrBins);
@@ -161,7 +160,7 @@ for iii=1:nAggrBins
         aggregationKernel(jjj,iii) = aggregationKernel(iii,jjj);
     end
 end
-toc
+
 settings.aggrInfo = aggregationMap;
 settings.aKernel = aggregationKernel;
 

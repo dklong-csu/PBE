@@ -71,7 +71,9 @@ for iii=1:settings.vecSize
         dfdy(aggregIdx,iii) = dfdy(aggregIdx,iii) - sum(aggrRates,2);
         dfdy(iii,iii) = dfdy(iii,iii) - aggrRates(idxiii,idxiii)/binSizes(idxiii);
 
-        for key=keys(settings.aggrInfo)
+        akeys = keys(settings.aggrInfo);
+        for k=1:length(akeys)
+            key = akeys(k);
             weights = settings.aggrInfo{key};
             dfdy(key,iii) = dfdy(key,iii) + sum(weights.*aggrRates,"all");
         end

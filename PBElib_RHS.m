@@ -51,8 +51,11 @@ dy(aggregIdx) = dy(aggregIdx) - (1./binSizes(1:length(aggregIdx))) .* diag(aggrR
 %   For created particles, need to retrieve information
 %   of how many of each bin are created for each Pi+Pj
 %---------------------------------------------------
-for key=keys(settings.aggrInfo)
+akeys = keys(settings.aggrInfo);
+for k=1:length(akeys)
+    key = akeys(k);
     weights = settings.aggrInfo{key};
+    % fprintf("%d --> %f\n", key, full(sum(weights.*aggrRates,"all")))
     dy(key) = dy(key) + sum(weights.*aggrRates,"all");
 end
 
