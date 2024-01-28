@@ -6,8 +6,9 @@ function Cost = GOLDSIM_objectiveFunction(parameters, data, model_reduction)
 %--------------------------------------------------------------------------
 %   First perform the simulation
 %--------------------------------------------------------------------------
+
 ic = [0.0001, 0.0003];
-[sol, mySettings] = GOLDSIM_simulateGoldParticles(parameters,model_reduction,ic);
+[sol, mySettings] = GOLDSIM_simulateGoldParticles(parameters,model_reduction,ic, data.times(end));
 
 %--------------------------------------------------------------------------
 %   L2 norm between simulation and data for each time

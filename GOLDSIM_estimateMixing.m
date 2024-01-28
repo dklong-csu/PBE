@@ -31,6 +31,7 @@ sigma = log(10);
 mu1 = log(0.0001);
 mu2 = log(0.0003);
 
+mixing_time = 1;    % approximately 1 second to mix
 tic
 parfor iii=1:n_sims
     %   perturb the initial conditions
@@ -46,7 +47,7 @@ parfor iii=1:n_sims
 end
 toc
 
-%%
+%%  After mixing time, roughly constant concentrations everywhere
 avg_psd = squeeze(mean(allPSDs,1));
 
 %%
@@ -72,7 +73,7 @@ h3 = animatedline('LineStyle','--',...
     'Color',[0.9290 0.6940 0.1250]);
 axis([0,15,0,Inf])
 plotpts = times;
-anim_seconds = 5;
+anim_seconds = 15;
 
 diams = ideal_diams;
 for iii=1:length(plotpts)

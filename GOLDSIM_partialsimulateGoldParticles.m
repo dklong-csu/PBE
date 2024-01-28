@@ -1,4 +1,4 @@
-function [sol, mySettings] = GOLDSIM_simulateGoldParticles(parameters, reduction, ic, Tend)
+function [sol, mySettings] = GOLDSIM_partialsimulateGoldParticles(parameters, reduction, ic, Tend)
 
 %%  Example script solving an Iridium system
 use_jac = true;     %   Use analytic Jacobian (much faster)
@@ -93,14 +93,9 @@ mySettings = PBElib_MakeSettings(A=A,...
 %   Solve the ODE
 %--------------------------------------------------------------------------
 
-%   Initial condition 
-y0 = zeros(mySettings.vecSize,1);
-y0(1) = ic(1); % 0.0001
-y0(2) = ic(2); % 0.0003
-
 %   ODE solve
 
-sol = PBElib_solveODEs(mySettings, y0, T, use_jac);
+sol = PBElib_solveODEs(mySettings, ic, T, use_jac);
 
 end
 

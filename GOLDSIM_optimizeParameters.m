@@ -89,7 +89,7 @@ prmGlobalOpt = simulannealbnd(F,p0,lb,ub,opts);
 ic = [0.0001, 0.0003];
 plot_reduct = 0.01;
 tic
-[sol, mySettings] = GOLDSIM_simulateGoldParticles(prmGlobalOpt,plot_reduct, ic);
+[sol, mySettings] = GOLDSIM_simulateGoldParticles(prmGlobalOpt,plot_reduct, ic, data_times(end));
 toc
 
 %%  Save data necessary for recreating plots
