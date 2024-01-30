@@ -5,9 +5,11 @@ dy = zeros(length(y),1);
 
 %--------------------------------------------------------------------------
 %   Chemical reactions
+%       FIXME -- source term function for chemicals
 %--------------------------------------------------------------------------
 [n_rxnrows, ~] = size(settings.A);
 dy(1:n_rxnrows) = sum( -settings.A .* ( prod( y(1:n_rxnrows) .^ max(0,settings.A) ) .* settings.K ) ,2);
+
 
 
 %--------------------------------------------------------------------------
@@ -38,7 +40,7 @@ dy(settings.gRxnIdx) = dy(settings.gRxnIdx) - settings.gRxnCoeff .* sum(dGrowth)
 %--------------------------------------------------------------------------
 aggregIdx = settings.pstart:settings.cutoff;
 aggrRates = y(aggregIdx) * y(aggregIdx)';
-aggrRates = aggrRates .* settings.aKernel;
+aggrRates = aggrRates .* settings.aKernel .* settings.aProb(y); % fixme
 aggrRates = tril(aggrRates);
 %---------------------------------------------------
 %   aggrRates = [aij*yi*yj] (on lower triangle only)

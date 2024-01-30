@@ -1,4 +1,9 @@
-function [sol, mySettings] = GOLDSIM_simulateGoldParticles(parameters, reduction, ic, Tend)
+function [sol, mySettings] = GOLDSIM_simulateGoldParticles(pre_parameters, reduction, ic, Tend)
+
+parameters = pre_parameters;
+parameters(1) = 10^pre_parameters(1);
+parameters(4) = 10^pre_parameters(4);
+
 
 %%  Example script solving an Iridium system
 use_jac = true;     %   Use analytic Jacobian (much faster)
@@ -29,15 +34,18 @@ fcn_reduceValInv = @diam2atoms; % inverse function to above fcn
 %--------------------------------------------------------------------------
 a = parameters(2);
 b = parameters(3);
+c = parameters(4);
 fcn_gKernel = @(size) growthKernel(size);
-fcn_aKernel = @(x,y) aggregationKernel(x,y,a,b);
+% fcn_aKernel = @(x,y) aggregationKernel(x,y,a,b);
+fcn_aKernel = @(x,y) aggregationKernel(x,y);
+fcn_aProb = @(x,y,vec) adhesionProbability(x,y,vec(3),a,b,c);
 
 %--------------------------------------------------------------------------
 %   Set up chemical reactions
 %--------------------------------------------------------------------------
-A = zeros(3, 1);
+A = zeros(4, 1);
 %   A + B -> P1
-A(1:3,1) = [1;1;-1];
+A(1:4,1) = [1;1;-1;-1];
 
 %   Reaction rates
 K = [parameters(1)];
@@ -85,7 +93,8 @@ mySettings = PBElib_MakeSettings(A=A,...
     emomInflowRate=emomInflowRate,...
     emomDelx=emomDelx,...
     emomGrowthRate=emomGrowthRate,...
-    fcn_atoms2size=@atoms2diam);
+    fcn_atoms2size=@atoms2diam,...
+    fcn_agglomProbability=fcn_aProb);
 
 
 
@@ -95,8 +104,10 @@ mySettings = PBElib_MakeSettings(A=A,...
 
 %   Initial condition 
 y0 = zeros(mySettings.vecSize,1);
-y0(1) = ic(1); % 0.0001
-y0(2) = ic(2); % 0.0003
+sizeIC = length(ic);
+y0(1:sizeIC) = ic;
+% y0(1) = ic(1); % 0.0001
+% y0(2) = ic(2); % 0.0003
 
 %   ODE solve
 
@@ -118,13 +129,14 @@ function G = growthKernel(s)
     G = 0*s;
 end
 
-function A = aggregationKernel(size1,size2,a,b)
+% function A = aggregationKernel(size1,size2,a,b)
+function A = aggregationKernel(size1,size2)
     %   Diameters from # atoms
     d1 = atoms2diam(size1);
     d2 = atoms2diam(size2);
 
     %   Adhesion probability
-    adprob = a * exp(-b * min(d1.^2,d2.^2));
+    % adprob = a * exp(-b * min(d1.^2,d2.^2));
 
     %   Brownian kernel
     brown = ( d1.^(-1) + d2.^(-1) ) .* (d1 + d2);
@@ -137,5 +149,24 @@ function A = aggregationKernel(size1,size2,a,b)
     
     %   Final result
     const = kB * Temp * AvoNumber / viscosity;
-    A = const * brown * min(1.0, adprob);
+    % A = const * brown * min(1.0, adprob);
+    A = const * brown;
+end
+
+function P = adhesionProbability(size1,size2,concL,prm1,prm2,prm3)
+    % prm1 = 0.22;
+    % prm2 = 0.5;
+    % prm3 = 1e-4;
+    a = min(1,max(prm1, (prm1-1)/prm3 * concL + 1));
+    b = prm2/prm3 * concL;
+    % a = prm1;
+    % b = prm2; % FIXME
+
+    % a = 0.22;
+    % b = 1.2;
+    
+    d1 = atoms2diam(size1);
+    d2 = atoms2diam(size2);
+    dd = min(d1.^2, d2.^2);
+    P = max(0.0, min(1.0, a * exp(-b * dd)));
 end

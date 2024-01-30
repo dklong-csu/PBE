@@ -39,6 +39,7 @@ arguments
     options.emomDelx
     options.emomGrowthRate
     options.fcn_atoms2size
+    options.fcn_agglomProbability
 end
 
 %--------------------------------------------------------------------------
@@ -69,6 +70,7 @@ end
 %       emomBigParticleDiam
 %       avgPSize
 %       dSize
+%       aProb
 %--------------------------------------------------------------------------
 
     
@@ -163,6 +165,10 @@ end
 
 settings.aggrInfo = aggregationMap;
 settings.aKernel = aggregationKernel;
+
+diamSquared = avgPSize(1:nAggrBins) * ones(1,nAggrBins);
+
+settings.aProb = @(y) options.fcn_agglomProbability(diamSquared,diamSquared',y);
 
 %--------------------------------------------------------------------------
 %   eMOM 

@@ -64,7 +64,7 @@ for iii=1:settings.vecSize
         idxiii = iii-settings.pstart+1;
         dPiii(idxiii) = 1;
         aggrRates = y(aggregIdx) * dPiii;
-        aggrRates = aggrRates .* settings.aKernel;
+        aggrRates = aggrRates .* settings.aKernel .* settings.aProb(y); % fixme
         aggrRates = tril(aggrRates);
         aggrRates(idxiii,idxiii) = 2* aggrRates(idxiii,idxiii);
 
