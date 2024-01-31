@@ -1,2 +1,8 @@
-Elapsed time is 0.566572 seconds.
-Script time (hh:mm:ss): 00:17:44
+Starting parallel pool (parpool) using the 'Processes' profile ...
+Connected to parallel pool with 16 workers.
+Elapsed time is 276.498706 seconds.
+[Warning: Figure is saved in DATA_GOLDSIM_estimateMixing.mat, which might result in a large file size or unexpected behavior when loading the figure. To reduce file
+size, avoid saving graphics objects by specifying which data variables to save. To save a graphics figure with additional options for loading, use the savefig
+function.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('GOLDSIM_estimateMixing', 'C:\Users\bi70vahu\emom_mepbm\PBE\GOLDSIM_estimateMixing.m', 245)" style="font-weight:bold">GOLDSIM_estimateMixing</a> (<a href="matlab: opentoline('C:\Users\bi70vahu\emom_mepbm\PBE\GOLDSIM_estimateMixing.m',245,0)">line 245</a>)] 
+Script time (hh:mm:ss): 00:04:55

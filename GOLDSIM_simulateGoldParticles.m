@@ -148,7 +148,7 @@ function A = aggregationKernel(size1,size2)
     AvoNumber = 6.02214076e23;
     
     %   Final result
-    const = kB * Temp * AvoNumber / viscosity;
+    const = 2/3 * kB * Temp * AvoNumber / viscosity;
     % A = const * brown * min(1.0, adprob);
     A = const * brown;
 end
