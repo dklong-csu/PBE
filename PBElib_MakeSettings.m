@@ -166,9 +166,18 @@ end
 settings.aggrInfo = aggregationMap;
 settings.aKernel = aggregationKernel;
 
-diamSquared = avgPSize(1:nAggrBins) * ones(1,nAggrBins);
-
-settings.aProb = @(y) options.fcn_agglomProbability(diamSquared,diamSquared',y);
+% diam = avgPSize(1:nAggrBins) * ones(1,nAggrBins);
+diam = avgPSize(1:nAggrBins);
+% @(x,dx,sumint23,sumint1,vec)
+z1 = zeta(-1);
+z23 = zeta(-2/3);
+pUB = pBins-1;
+sumint23 = z23 - hurwitzZeta(-2/3,pUB(1:end-1)+1);
+sumint23 = z23 - hurwitzZeta(-2/3,pUB(2:end)+1) - sumint23;
+% sumint23 = 
+sumint1 = z1 - hurwitzZeta(-1,pUB(1:end-1)+1);
+sumint1 = z1 - hurwitzZeta(-1,pUB(2:end)+1) - sumint1;
+settings.aProb = @(y) options.fcn_agglomProbability(avgPSize,pBins,sumint23, sumint1,y);
 
 %--------------------------------------------------------------------------
 %   eMOM 

@@ -56,6 +56,9 @@ for iii=1:settings.vecSize
     %----------------------------------------------------------------------
     %   Particle aggregation
     %----------------------------------------------------------------------
+    % aggDim = length(aggregIdx);
+    % dblcntcorrect = 0.5*ones(aggDim,aggDim);
+    % dblcntcorrect = dblcntcorrect + diag(diag(dblcntcorrect));
     
     if (iii >= settings.pstart) && (iii <= settings.cutoff)
         %   Pjjj
@@ -65,7 +68,13 @@ for iii=1:settings.vecSize
         dPiii(idxiii) = 1;
         aggrRates = y(aggregIdx) * dPiii;
         aggrRates = aggrRates .* settings.aKernel .* settings.aProb(y); % fixme
-        aggrRates = tril(aggrRates);
+        
+        aggDim = length(aggregIdx);
+        dblcntcorrect = 0.5*ones(aggDim,aggDim);
+        dblcntcorrect = dblcntcorrect + diag(diag(dblcntcorrect));
+
+        aggrRates = aggrRates .* dblcntcorrect;
+        % aggrRates = tril(aggrRates);
         aggrRates(idxiii,idxiii) = 2* aggrRates(idxiii,idxiii);
 
         dfdy(aggregIdx,iii) = dfdy(aggregIdx,iii) - sum(aggrRates,2);

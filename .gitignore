@@ -5,3 +5,4 @@ codegen/
 *.eps
 *.tex
 *.log
+*.dat

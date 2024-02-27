@@ -41,7 +41,11 @@ dy(settings.gRxnIdx) = dy(settings.gRxnIdx) - settings.gRxnCoeff .* sum(dGrowth)
 aggregIdx = settings.pstart:settings.cutoff;
 aggrRates = y(aggregIdx) * y(aggregIdx)';
 aggrRates = aggrRates .* settings.aKernel .* settings.aProb(y); % fixme
-aggrRates = tril(aggrRates);
+aggDim = length(aggregIdx);
+dblcntcorrect = 0.5*ones(aggDim,aggDim);
+dblcntcorrect = dblcntcorrect + diag(diag(dblcntcorrect));
+aggrRates = aggrRates .* dblcntcorrect;
+% aggrRates = tril(aggrRates);
 %---------------------------------------------------
 %   aggrRates = [aij*yi*yj] (on lower triangle only)
 %   --> gives rxn rate for every Pi+Pj agglomeration

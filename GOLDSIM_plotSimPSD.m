@@ -4,12 +4,13 @@ clc
 
 
 %%
-load("DATA_GOLDSIM_optimizeParameters_5percent.mat");
-save_folder = fullfile('.','figures','psdfit');
+% load("DATA_GOLDSIM_optimizeParameters_5percent.mat");
+load("DATA_GOLDSIM_optimizeParameters_test.mat");
+save_folder = fullfile('.','figures','psdfit_test');
 save_file_root = 'psdfit';
 
 %%  Plot the PSD that was optimized or the more accurate version?
-plot_accurate = true;
+plot_accurate = false;
 if plot_accurate
     sol = solAccurate;
     mySettings = mySettingsAccurate;
@@ -61,6 +62,7 @@ for iii=1:length(plotpts)
         'LineStyle','--',...
         'LineWidth',2,...
         'DisplayName','Measured PSD')
+    ylim([0 1])
 
 
     yyaxis right
@@ -78,14 +80,39 @@ for iii=1:length(plotpts)
     text(8,0.2,sprintf("%.f seconds",plotpts(iii)))
     box on
     set(gca,'YColor','k')
+    legend('Location','northoutside','NumColumns',2)
 
 
     fontsize(gcf,scale=1.75)
     hold off
     filenamePic = fullfile(save_folder, strcat(save_file_root,num2str(iii)));
     print('-depsc','-image',filenamePic)
-    cleanfigure;
-    filenameTex = strcat(filenamePic,'.tex');
-    matlab2tikz(filenameTex)
-    close all
+    saveFigureData(gcf, fullfile(save_folder,"psdfit_"), sprintf("_%s.dat",num2str(iii)));
+    % cleanfigure;
+    % filenameTex = strcat(filenamePic,'.tex');
+    % figData = findobj(fig,'-property','YData');
+    % matlab2tikz(filenameTex)
+    % close all
+end
+
+
+%%  write curves in matlab figure to a data file
+function saveFigureData(fig, fileNamePrefix, fileNameSuffix)
+    figData = findobj(fig, '-property','YData'); %  find everything with y-values
+    %   Loop through all relevant data 
+    for iii=1:numel(figData)
+        %   Get display name of curve to give meaningful name to data file
+        ID = figData(iii).DisplayName;
+        ID = erase(ID," ");
+        %   Get the plotted x-y data
+        xvals = figData(iii).XData;
+        yvals = figData(iii).YData;
+        %   Construct a meaningful filename
+        filename = strcat(fileNamePrefix,ID,fileNameSuffix);
+        %   Print to the file
+        fileID = fopen(filename,'w');   %   write mode deletes previous contents
+        fprintf(fileID,"%.10e\t%.10e\n",[xvals(:)';yvals(:)']);
+        fclose(fileID);
+    end
+
 end
