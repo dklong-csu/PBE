@@ -172,12 +172,18 @@ diam = avgPSize(1:nAggrBins);
 z1 = zeta(-1);
 z23 = zeta(-2/3);
 pUB = pBins-1;
-sumint23 = z23 - hurwitzZeta(-2/3,pUB(1:end-1)+1);
-sumint23 = z23 - hurwitzZeta(-2/3,pUB(2:end)+1) - sumint23;
+tau = -2/3;
+sumint23 = z23 - hurwitzZeta(tau,pUB(1:end-1)+1);
+sumint23 = z23 - hurwitzZeta(tau,pUB(2:end)+1) - sumint23;
 % sumint23 = 
+% sumint23 = z23 - hurwitzZeta(pUB(1:end-1)+1,tau);
+% sumint23 = z23 - hurwitzZeta(pUB(2:end)+1,tau) - sumint23;
+
 sumint1 = z1 - hurwitzZeta(-1,pUB(1:end-1)+1);
 sumint1 = z1 - hurwitzZeta(-1,pUB(2:end)+1) - sumint1;
-settings.aProb = @(y) options.fcn_agglomProbability(avgPSize,pBins,sumint23, sumint1,y);
+settings.aProb = @(y) options.fcn_agglomProbability(pBins, sumint23, sumint1, y);
+% settings.aProb = @(y) options.fcn_agglomProbability(avgPSize,pBins,sumint23, sumint1,y);
+% settings.aProb = @(y) options.fcn_agglomProbability(avgPSize,y(3));
 
 %--------------------------------------------------------------------------
 %   eMOM 

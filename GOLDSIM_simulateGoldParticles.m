@@ -1,7 +1,11 @@
 function [sol, mySettings] = GOLDSIM_simulateGoldParticles(pre_parameters, reduction, ic, Tend)
 
 parameters = 10.^pre_parameters;
-parameters(end) = -parameters(end);
+K = parameters(1);
+% A = parameters(2);
+% B = parameters(3);
+% C = parameters(4);
+% parameters(end) = -parameters(end);
 % fprintf("%.20f\n",parameters)
 % parameters(1) = 10^pre_parameters(1); % reduction rxn constant
 % parameters(2) = 10^pre_parameters(2); % adhesion equilibrium
@@ -35,13 +39,17 @@ fcn_reduceValInv = @diam2atoms; % inverse function to above fcn
 %--------------------------------------------------------------------------
 %   Growth and agglomeration kernels at bottom of file
 %--------------------------------------------------------------------------
-gamma = parameters(2);
+% gamma = parameters(2);
 % b = parameters(3);
 % c = parameters(4);
 fcn_gKernel = @(size) growthKernel(size);
 fcn_aKernel = @(x,y) aggregationKernel(x,y);
 % fcn_aProb = @(x,y,vec) adhesionProbability(x,y,vec(3),a,b,c);
-fcn_aProb = @(x,dx,sumint23,sumint1,vec) adhesionProbability(x,dx,sumint23,sumint1,vec,gamma,parameters(3),parameters(4));
+% adhesionLangmuir(size1,vec,A,B,C)
+% FIXME
+% fcn_aProb = @(x,dx,sumint23,sumint1,vec) adhesionProbability(x,dx,sumint23,sumint1,vec,pre_parameters);
+fcn_aProb = @(dx,sumint23,sumint1,vec) adhesionModel(dx, vec, parameters, sumint1, sumint23);
+% fcn_aProb = @(size, L) adhesionLangmuir(size,L,A,B,C);
 
 %--------------------------------------------------------------------------
 %   Set up chemical reactions
@@ -51,7 +59,7 @@ A = zeros(4, 1);
 A(1:4,1) = [1;1;-1;-1];
 
 %   Reaction rates
-K = [parameters(1)];
+% K = [parameters(1)];
 
 %--------------------------------------------------------------------------
 %   Particle Growth due to monomer addition
@@ -158,109 +166,28 @@ function A = aggregationKernel(size1,size2)
     % end
 end
 
-function P = adhesionProbability(size1,binSizes,sumint23,sumint1,vec,ligandEquilib,a0,b0)
-    %   Boric acid concentration = vec(3)
-    B = vec(3);
-    %   Percentage of atoms on surface
-    % A = vec(4:end-1); % conc particle bins mol/L
-    %   A*avo = number of atoms in bin I
-    %   SA = % on surface * (A*avo)
-    %   surf atoms ~ i^(2/3)
-    %   perc on surface = surf atoms/ total atoms (per cluster)
-    %       ~ i^(-1/3)
 
-    %   V = 4/3 pi (size1/2)^3
-    %   SA = 4 pi (size1/2)^2
-    %   SA/V = 3/(size1/2)
+function P = adhesionModel(binSizes, x, parameters, sumint1, sumint23)
+    concBin = x(4:end);
+    concBinAvg = concBin ./ diff(binSizes);
+    nAuAtoms = sum( concBinAvg .* sumint1 );
+    nAuSurfAtoms = sum( concBinAvg .* sumint23 );
 
-    %   
-
-    %   size1 = # atoms in (average bin size)
-    % expandatoms = (1:binSizes(end))';
-    concBin = vec(4:end);
-    binwidth = diff(binSizes);
-    concmid = concBin ./ binwidth;
-    surfatoms = 0;
-    masscheck = 0;
-    sum0 = 0;
-    sum0_m = 0;
-    % z23 = zeta(-2/3);
-    % z1 = zeta(-1);
-    
-    masscheck = sum(concmid .* sumint1);
-    massfix = B / masscheck;
-    concmid = concmid * massfix;
-
-    surfatoms = sum(concmid .* sumint23);
-    % for eee=1:length(binSizes)-1
-    %     up = binSizes(eee+1)-1;
-    %     if eee == (length(binSizes)-1)
-    %         up = up+1;
-    %     end
-    % 
-    %     sum1 = z23 - hurwitzZeta(-2/3,up+1);
-    %     psum = sum1 - sum0;
-    %     surfatoms = surfatoms + concmid(eee)*psum;
-    %     sum0 = sum1;
-    % 
-    %     sum1m = z1 - hurwitzZeta(-1,up+1);
-    %     psumm = sum1m - sum0_m;
-    %     masscheck = masscheck + concmid(eee)*psumm;
-    %     sum0_m = sum1m;
+    % Boric acid molecules = nAuAtoms
+    B = x(3);
+    % if B > 0
+    %     fprintf("\nB/SA =%e\nAu/SA=%e\n",B/nAuSurfAtoms,nAuAtoms/nAuSurfAtoms)
     % end
-    % gi = griddedInterpolant(size1,concmid,'nearest','nearest');
-    % expandconc = gi(expandatoms);
-    % expandconc = 0*expandatoms;
-    % for eee=1:length(binSizes)-1
-    %     idx1=binSizes(eee);
-    %     idx2=binSizes(eee+1)-1;
-    %     expandconc(idx1:idx2) = concmid(eee);
-    %     if eee == (length(binSizes)-1)
-    %         expandconc(end) = concmid(eee);
-    %     end
-    % end
+    % R = nAuAtoms / nAuSurfAtoms;
+    R = B / nAuSurfAtoms;
+    equib = parameters(2);
+    coverage = max( 0, min(1, equib * R) );
 
-
-    % surfatoms = expandatoms .^ (2/3);
-    % totalsurf = sum( surfatoms .* expandconc );
-    totalsurf = surfatoms;
-
-
-
-
-    % surfatoms = [size1;mean(60000,2*59999)] .^ (2/3);
-    % totalsurf = sum(surfatoms .* [A;vec(end)]);
-    % SA = sum( min(size1,(size1 .^ (-1/3))) .* A );
-    % SA = 
-    %   Ratio between boric acid and surface atoms
-    if B==0
-        R=0;
-    else
-        R = B / totalsurf;
-    end
-    % fprintf("R=%e \t \t (B-atoms)/B=%f%%\n",R,100*(B-masscheck)/B)
-    % 100*(B-sum(expandconc.*expandatoms))/B
-    %   Average coverage
-    %   prm1 is an equilibrium giving an average percentage of ligand in
-    %   the solution vs attached to particles and also covers the unknown
-    %   factor that gives surface atoms
-    % coverage = min(1, ligandEquilib*R/(1+ligandEquilib*R));
-    % coverage = (ligandEquilib*R)/(1+ligandEquilib*R);
-    coverage = min(1, ligandEquilib*R);
-    % fprintf("Coverage=%f\n",coverage)
-
-    %   Hopefully correct
-    [a,b] = adhesionModel(coverage,a0,b0);
-
-    %   a*exp(-b*(x*y))
-    d1 = atoms2diam(size1(1:end-1));
-    d1 = d1 * ones(1,length(d1));
-
-    % d2 = atoms2diam(size2);
-    D = (d1 + d1').^1;
-    P = a*exp(b * D);
-    P = min(1,P);
-    P = max(0,P);
-
-
+    %   What model to relate surface coverage and adhesion probability?
+    P = coverage;
+    % P = coverage ^2;
+    % P = sqrt(coverage);
+    % P = 3*coverage^2 - 2*coverage^3;
+    P = P * parameters(3);
+    P = 1 - P;
 end

@@ -4,10 +4,10 @@ close all
 
 rng('default')
 %%
-filename_log = "GOLDSIM_optimzation_test.log";
-filename_MatData = "DATA_GOLDSIM_optimizeParameters_test.mat";
+filename_log = "GOLDSIM_optimzation_surface_boric1.log";
+filename_MatData = "DATA_GOLDSIM_optimizeParameters_surface_boric1.mat";
 
-optimization_reduct = 0.01;% 0.05
+optimization_reduct = 0.015;% 0.05
 plotting_reduct = 0.01; % 0.01
 
 %%  Save log
@@ -28,27 +28,16 @@ maxEvals = 1000; %10000
 %   Set initial guess at parameters
 %--------------------------------------------------------------------------
 
-%   x .* y --> ~70
-% K = 5.44432e+00;
-% gamma = -1.07601e+00;
-% a0 = -7.96271e-02;
-% b0 = -8.74913e-01;
-% K = 4.45061e+00;
-%   x + y --> ~64
-K = 4.57595e+00;
-gamma = -1.05754e+00; 
-a0 = -9.40497e-03;
-b0 = -1.15462e+00;
-p0 = [K,gamma,a0,b0];
-%--------------------------------------------------------------------------
-%   Some parameter bounds
-%--------------------------------------------------------------------------
+% K = 7;
+% E = -1;
+% M = 0;
+K = log10(8.573367e+05);
+E = log10(1.448856e-03);
+M = log10(9.838769e-01);
 
-% lb = [0,0,0,-6];
-% ub = [8, 1, 1.5, 0];
-%   [reduct K, ligand equilib, a0, b0]
-lb = [0,-10,-10,-10];
-ub = [10,10,0,10];
+p0 = [K, E, M];
+lb = [0, -10, -4];
+ub = [6.89, 10, 0];
 
 
 %--------------------------------------------------------------------------
@@ -69,38 +58,49 @@ F = @(p) GOLDSIM_objectiveFunction(p, compare_data, optimization_reduct);
 %--------------------------------------------------------------------------
 %   Optimization
 %--------------------------------------------------------------------------
-
-% hybridopts = optimoptions('fmincon',...
-%     'Display','iter',...
-%     'MaxFunctionEvaluations',maxEvals,...
-%     'PlotFcn','optimplotfval');
-% opts = optimoptions(@simulannealbnd,...
-%     'PlotFcn','saplotbestf',...
-%     'HybridFcn',{@fmincon,hybridopts},...
-%     'MaxFunctionEvaluations',maxEvals,...
-%     'Display','iter');
-% 
-% prmGlobalOpt = simulannealbnd(F,p0,lb,ub,opts);
-
-
-opts = optimoptions(@surrogateopt,...
-    'PlotFcn','surrogateoptplot',...
-    'MaxFunctionEvaluations',maxEvals,...
-    'Display','final',...
-    'UseParallel',true,...
-    'InitialPoints',p0);
-prmGlobalOpt = surrogateopt(F,lb,ub,opts);
-
-fprintf("Optimal parameters are:\n")
-for iii=1:length(prmGlobalOpt)
-    fprintf("\t%.5e\n",prmGlobalOpt(iii))
+opt_strat = 2;
+switch opt_strat
+    case 1
+        hybridopts = optimoptions('fmincon',...
+            'Display','iter',...
+            'MaxFunctionEvaluations',maxEvals,...
+            'PlotFcn','optimplotfval',...
+            'UseParallel',false);
+        opts = optimoptions(@simulannealbnd,...
+            'PlotFcn','saplotbestf',...
+            'HybridFcn',{@fmincon,hybridopts},...
+            'MaxFunctionEvaluations',maxEvals,...
+            'Display','iter');
+        
+        prmGlobalOpt = simulannealbnd(F,p0,lb,ub,opts);
+    case 2
+        hybridopts = optimoptions('fmincon',...
+            'Display','iter',...
+            'MaxFunctionEvaluations',maxEvals,...
+            'PlotFcn','optimplotfval',...
+            'UseParallel',true);
+        opts = optimoptions(@surrogateopt,...
+            'PlotFcn','surrogateoptplot',...
+            'MaxFunctionEvaluations',maxEvals,...
+            'Display','final',...
+            'UseParallel',true,...
+            'InitialPoints',p0);
+        prmGlobalOpt = surrogateopt(F,lb,ub,opts);
+        [prmGlobalOpt,fval] = fmincon(F,prmGlobalOpt,[],[],[],[],lb,ub,[],hybridopts);
 end
 
+%%
+fprintf("Optimal parameters are:\n")
+fprintf("\t%.6e",10.^prmGlobalOpt)
+fprintf("\n")
+% fprintf("K = %.10e;\n",prmGlobalOpt(1))
+% fprintf("E = %.10e;\n",prmGlobalOpt(2))
+fprintf("F(opt prm) = %f\n", fval)
 %%
 %--------------------------------------------------------------------------
 %   Plot the optimal solutions
 %--------------------------------------------------------------------------
-ic = [0.0001; 0.0003];
+ic = [0.0001; 0.0003; 0.0096];
 
 tic
 [solOptimize, mySettingsOptimize] = GOLDSIM_simulateGoldParticles(prmGlobalOpt,optimization_reduct, ic, data_times(end));
@@ -110,16 +110,9 @@ tic
 [solAccurate, mySettingsAccurate] = GOLDSIM_simulateGoldParticles(prmGlobalOpt,plotting_reduct, ic, data_times(end));
 toc
 
-%%
-b = -10^prmGlobalOpt(end);
-decayfcn = @(x,y) exp(b*(x+y));
-figure
-fsurf(decayfcn,[0 10 0 10])
-view(2)
-colorbar
+
 %%  Save data necessary for recreating plots
 save(filename_MatData);
-
 
 
 %%  End time for script

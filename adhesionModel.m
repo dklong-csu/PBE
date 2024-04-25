@@ -1,4 +1,4 @@
-function [a,b] = adhesionModel(coverage,a0,b0)
+function [a,b] = adhesionModel(r,a0,b0,type)
     %   Numerically calculated for small sizes
     % coverage_fit = [1	0.900000000000000	0.800000000000000	0.700000000000000	0.600000000000000	0.500000000000000	0.400000000000000	0.300000000000000	0.200000000000000	0.100000000000000	0.0100000000000000	0.00100000000000000	0.000100000000000000	1.00000000000000e-05];
     % a_fit = [0.00622808784368107	0.0195847629616278	0.0573948199339693	0.117063079934492	0.199401641198954	0.300357000273945	0.412953209698401	0.530401195093301	0.652711702456829	0.796311613368275	0.975552785265214	0.997527259429598	0.999752508252221	0.999975248704746];
@@ -10,9 +10,23 @@ function [a,b] = adhesionModel(coverage,a0,b0)
     % binterp = griddedInterpolant(flip(coverage_fit), flip(b_fit),'makima','linear');
     % b = min(0,binterp(coverage));
     % a = 0.6;
-    a= a0*(1-coverage);
+
+    switch type
+        case 1
+            smoothstep = r;
+        case 2
+            smoothstep = 3*r^2 - 2*r^3;
+        case 3
+            smoothstep = 6*r^5 - 15*r^4 + 10*r^3;
+        case 4
+            smoothstep = r.^2;
+    end
+    smoothstep = max(min(1,smoothstep),0);
+
+
+    a= 1 - a0*smoothstep;
     % a = a0*(1-sqrt(coverage));
     % b = b0*sqrt(coverage);
-    b = b0*coverage;
+    b = b0*smoothstep;
 
 end

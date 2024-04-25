@@ -5,12 +5,12 @@ clc
 
 %%
 % load("DATA_GOLDSIM_optimizeParameters_5percent.mat");
-load("DATA_GOLDSIM_optimizeParameters_test.mat");
-save_folder = fullfile('.','figures','psdfit_test');
+load("DATA_GOLDSIM_optimizeParameters_surface_boric2v2.mat");
+save_folder = fullfile('.','figures','boric2v2');
 save_file_root = 'psdfit';
 
 %%  Plot the PSD that was optimized or the more accurate version?
-plot_accurate = false;
+plot_accurate = 1;
 if plot_accurate
     sol = solAccurate;
     mySettings = mySettingsAccurate;
@@ -85,9 +85,9 @@ for iii=1:length(plotpts)
 
     fontsize(gcf,scale=1.75)
     hold off
-    filenamePic = fullfile(save_folder, strcat(save_file_root,num2str(iii)));
-    print('-depsc','-image',filenamePic)
-    saveFigureData(gcf, fullfile(save_folder,"psdfit_"), sprintf("_%s.dat",num2str(iii)));
+    % filenamePic = fullfile(save_folder, strcat(save_file_root,num2str(iii)));
+    % print('-depsc','-image',filenamePic)
+    % saveFigureData(gcf, fullfile(save_folder,"psdfit_"), sprintf("_%s.dat",num2str(iii)));
     % cleanfigure;
     % filenameTex = strcat(filenamePic,'.tex');
     % figData = findobj(fig,'-property','YData');
