@@ -1,12 +1,11 @@
 clc
 clear variables
-close all
+% close all
 
 %%  Example script solving an Iridium system
 use_jac = true;     %   Use analytic Jacobian (much faster)
-use_mex = true;     %   Compile functions (a bit faster)
-time_solve = false;  %   Time the ODE solve?
-regen_mex = true;  %   Does the mex function need to be recompiled? (Needed if vector/matrix sizes change)
+time_solve = true;  %   Time the ODE solve?
+use_emom = false;
 
 %--------------------------------------------------------------------------
 %   Save all of the data needed to reproduce plots
@@ -19,24 +18,6 @@ save_data = false;   %   False if you don't need to save data for some reason
 saveFileName = "DATA_iridium_2500.mat";
 
 %--------------------------------------------------------------------------
-%   Maximum particle size in number of atoms
-%       Parameters below are fit to maxsize=2500
-%   Conversion function from # atoms -> diameter
-%   Final time to simulate to
-%--------------------------------------------------------------------------
-maxsize = 2500;
-atoms2diam = @(a) 0.3000805 * nthroot(a,3);
-T = 10.0;
-
-%--------------------------------------------------------------------------
-%   Growth and agglomeration kernels at bottom of file
-%       Growth(i atoms) = 8/3 * i^(2/3) * k2  --> i<=M
-%       Growth(i atoms) = 8/3 * i^(2/3) * k3  --> i>M
-%       Agglom(i,j atoms) = 8/3 * i^(2/3) * 8/3 * j^(2/3) * k4 --> i,j<=M
-%       Agglom(i,j atoms) = 0 --> i or j > M
-%--------------------------------------------------------------------------
-
-%--------------------------------------------------------------------------
 %   Mechanism modeled
 %       FIXME more detail
 %   A ->[kf*S*S] As + L
@@ -45,32 +26,46 @@ T = 10.0;
 %   A + Pi ->[G(k2,k3,M)*r(i)] Pi+1 + L
 %   (agglom FIXME)
 %--------------------------------------------------------------------------
+
 kb = 1.37e5;
 kf = 5e-7*kb;
 k1 = 7.69e4;
 k2 = 1.4e4;
 k3 = 7.15e3;
 k4 = 1.74e3;
-M = 111;
+M = 111; 
 S = 11.3;
 
 %--------------------------------------------------------------------------
-%   Set up vectors
-%       nRxns --> known from mechanism
-%       nSpecies --> known from mechanism
-%       firstSize --> known from mechanism
+%   Maximum particle size in number of atoms
+%       Parameters below are fit to maxsize=2500
+%   Conversion function from # atoms -> diameter
+%   Final time to simulate to
 %--------------------------------------------------------------------------
-nRxns = 3;
-nSpecies = 3;
-firstSize = 3;
+if use_emom
+    maxsize = 2*M;
+else 
+    maxsize = 2500;
+end
+firstsize = 3;
+atoms2diam = @(a) 0.3000805 * nthroot(a,3);
+T = 10.0;
 
-particles = firstSize:maxsize;
-sizes = atoms2diam(particles);
-dsizes = sizes - atoms2diam(particles-1);
-pstart = nSpecies+1;                    %   start index for particles
-pend = pstart + length(particles) - 1;  %   end index for particles
-pBins = ones(pend-pstart+1,1);
-vecSize = pend;                         %   no emom so the last particle index is the last index
+%--------------------------------------------------------------------------
+%   Will the number of particles be reduced via binning?
+%--------------------------------------------------------------------------
+reductionAmount = 0.0;
+fcn_reduceVal = atoms2diam; % If reducing based on a different criteria, change this
+fcn_reduceValInv = @(d) (d/0.3000805) .^ 3; % inverse function to above fcn
+
+
+
+%--------------------------------------------------------------------------
+%   Growth and agglomeration kernels at bottom of file
+%--------------------------------------------------------------------------
+
+fcn_gKernel = @(size) growthKernel(size,k2,k3,M);
+fcn_aKernel = @(x,y) aggregationKernel(x,y,k4,M);
 
 %--------------------------------------------------------------------------
 %   Set up chemical reactions
@@ -88,7 +83,7 @@ vecSize = pend;                         %   no emom so the last particle index i
 %       Vector K is a row vector where each entry is the reaction rate for
 %       the corresponding reaction
 %--------------------------------------------------------------------------
-A = zeros(pstart, nRxns);
+A = zeros(4, 3);
 %   A -> As + L
 A(1:3,1) = [1;-1;-1];
 %   As + L -> A
@@ -108,73 +103,56 @@ K = [kf*S*S, kb, k1];
 %           gRxnIdx --> indices of A,L
 %           gRxnCoeff --> Stoichiometry for A,L, negative means a product
 %           gKernel --> Reaction rate for each A + Pi -> Pi+1 + L
-%               gKernel(end) = 0 so that mass is not lost
-%                   if eMoM is used, do not make this edit!
 %--------------------------------------------------------------------------
 gidx = 1;
 gRxnIdx = [1,3];
 gRxnCoeff = [1,-1];
-gKernel = growthFcn(particles, k2, k3, M);
-gKernel(end) = 0;
 
 %--------------------------------------------------------------------------
-%   Particle Agglomeration
-%       aKernel --> agglomeration kernel
-%           aKernel(i,j) --> agglomeration rate between particle(i) and
-%           particle(j)
+%   emom information
+%--------------------------------------------------------------------------
+emomInflowRate=k3;
+emomGrowthRate=k3;
+emomDelx=0.3000805;
+
+%--------------------------------------------------------------------------
+%   Consolidate necessary settings
 %--------------------------------------------------------------------------
 
-aMapping = cell(numel(3:M),numel(3:M));
-for iii=1:numel(3:M)
-    for jjj=1:numel(3:M)
-        size1 = iii+2;
-        size2 = jjj+2;
-        sizeCreated = size1+size2;
-        idxCreated = sizeCreated - 2;
-        numCreated = 1;
-        aMapping{iii,jjj} = [idxCreated, numCreated];
-    end
-end
-aKernel = agglomFcn(3:M,k4);
+mySettings = PBElib_MakeSettings(A=A,...
+    K=K,...
+    atoms=firstsize:maxsize,...
+    reductionAmount=reductionAmount,...
+    fcn_reduceVal=fcn_reduceVal,...
+    fcn_reduceValInv=fcn_reduceValInv,...
+    useEMoM=use_emom,...
+    fcn_gkern=fcn_gKernel,...
+    gidx=gidx,...
+    gRxnIdx=gRxnIdx,...
+    gRxnCoeff=gRxnCoeff,...
+    cutoff=M,...
+    fcn_akern=fcn_aKernel,...
+    emomInflowRate=emomInflowRate,...
+    emomDelx=emomDelx,...
+    emomGrowthRate=emomGrowthRate,...
+    fcn_atoms2size=atoms2diam);
+
 
 
 %--------------------------------------------------------------------------
 %   Solve the ODE
 %--------------------------------------------------------------------------
 
-%   Consolidate settings
-mySettings = PBElib_Settings(vecSize, ...
-        A=A,...
-        K=K,...
-        pstart=pstart,...
-        pend=pend,...
-        gidx=gidx,...
-        gKernel=gKernel,...
-        gRxnIdx=gRxnIdx,...
-        gRxnCoeff=gRxnCoeff,...
-        cutoff=M,...
-        aKernel=aKernel,...
-        sizes=sizes,...
-        dsizes=dsizes,...
-        pBins=pBins,...
-        aMapping=aMapping);
-
 %   Initial condition --> A(0) = 0.0012, all others 0
-y0 = zeros(vecSize,1);
+y0 = zeros(mySettings.vecSize,1);
 y0(1) = 0.0012;
 
-%   Recompile functions with new vector size
-if regen_mex
-    fprintf("Compiling right hand side function\n\t")
-    codegen -report PBElib_RHS.m -args {0.0, y0, mySettings}
-    fprintf("Compiling Jacobian function\n\t")
-    codegen -report PBElib_Jacobian.m -args {0.0, y0, mySettings}
-end
-
 %   ODE solve
-sol = PBElib_solveODEs(mySettings, y0, T, use_mex, use_jac);
+
+sol = PBElib_solveODEs(mySettings, y0, T, use_jac);
+
 if time_solve
-    fcn_time = @() PBElib_solveODEs(mySettings, y0, T, use_mex, use_jac);
+    fcn_time = @() PBElib_solveODEs(mySettings, y0, T, use_jac);
     time_to_solve = timeit(fcn_time);
     fprintf("The ODEs take %.2fs to solve on average\n",time_to_solve)
 end
@@ -202,7 +180,7 @@ ax = gca;
 h = animatedline('LineStyle','-',...
     'Marker','none',...
     'LineWidth',2);
-axis([0,atoms2diam(maxsize),0,Inf])
+axis([0,max(5,atoms2diam(maxsize)),0,Inf])
 n_times = 10;
 plotpts = linspace(0,T,n_times+1);
 plotpts = plotpts(2:end);
@@ -230,11 +208,11 @@ function r = rFcn(size)
     r = 8/3 * (size .^ (2/3) );
 end
 
-function G = growthFcn(s,k1,k2,M)
+function G = growthKernel(s,k1,k2,M)
     G = k1 * ones(size(s)) .* (s <= M) + k2 * ones(size(s)) .* (s > M);
     G = rFcn(s) .* G;
 end
 
-function A = agglomFcn(aSizes,k)
-    A = rFcn(aSsizes)' * rFcn(aSizes) * k;
+function A = aggregationKernel(size1,size2,k, M)
+    A = rFcn(size1) * rFcn(size2) * k * (size1 <= M) * (size2 <= M);
 end

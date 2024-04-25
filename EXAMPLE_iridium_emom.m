@@ -5,7 +5,7 @@ close all
 %%  Example script solving an Iridium system
 use_jac = true;     %   Use analytic Jacobian (much faster)
 use_mex = true;     %   Compile functions (a bit faster)
-time_solve = true;  %   Time the ODE solve?
+time_solve = false;  %   Time the ODE solve?
 regen_mex = true;   %   Does the mex function need to be recompiled? (Needed if vector/matrix sizes change)
 use_emom = true;    %   Use emom for large particles
 %--------------------------------------------------------------------------
@@ -15,7 +15,7 @@ use_emom = true;    %   Use emom for large particles
 %       mySettings --> gives information about vector indices and so forth
 %       diams --> gives particle diameters
 %--------------------------------------------------------------------------
-save_data = true;   %   False if you don't need to save data for some reason
+save_data = false;   %   False if you don't need to save data for some reason
 saveFileName = "DATA_iridium_emom.mat";
 
 %--------------------------------------------------------------------------
@@ -70,6 +70,7 @@ sizes = atoms2diam(particles);
 dsizes = sizes - atoms2diam(particles-1);
 pstart = nSpecies+1;                    %   start index for particles
 pend = pstart + length(particles) - 1;  %   end index for particles
+pBins = ones(pend-pstart+1,1);
 vecSize = pend;                         %   emom adds 4
 if use_emom
     vecSize = vecSize + 4;
@@ -151,7 +152,8 @@ mySettings = PBElib_Settings(vecSize, ...
         emomGrowthRate=k3,...
         emomBigParticleDiam=atoms2diam(maxsize),...
         sizes=sizes,...
-        dsizes=dsizes);
+        dsizes=dsizes,...
+        pBins=pBins);
 
 %   Initial condition --> A(0) = 0.0012, all others 0
 y0 = zeros(vecSize,1);
