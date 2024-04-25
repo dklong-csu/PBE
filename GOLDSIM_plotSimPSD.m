@@ -87,7 +87,7 @@ for iii=1:length(plotpts)
     hold off
     % filenamePic = fullfile(save_folder, strcat(save_file_root,num2str(iii)));
     % print('-depsc','-image',filenamePic)
-    % saveFigureData(gcf, fullfile(save_folder,"psdfit_"), sprintf("_%s.dat",num2str(iii)));
+    saveFigureData(gcf, fullfile(save_folder,"psdfit_"), sprintf("_%s.dat",num2str(iii)));
     % cleanfigure;
     % filenameTex = strcat(filenamePic,'.tex');
     % figData = findobj(fig,'-property','YData');
