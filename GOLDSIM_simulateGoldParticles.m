@@ -184,10 +184,8 @@ function P = adhesionModel(binSizes, x, parameters, sumint1, sumint23)
     coverage = max( 0, min(1, equib * R) );
 
     %   What model to relate surface coverage and adhesion probability?
-    P = coverage;
-    % P = coverage ^2;
-    % P = sqrt(coverage);
-    % P = 3*coverage^2 - 2*coverage^3;
+    n=6;
+    P = coverage^n;
     P = P * parameters(3);
     P = 1 - P;
 end

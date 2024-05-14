@@ -4,8 +4,8 @@ close all
 
 rng('default')
 %%
-filename_log = "GOLDSIM_optimzation_surface_boric1.log";
-filename_MatData = "DATA_GOLDSIM_optimizeParameters_surface_boric1.mat";
+filename_log = "GOLDSIM_optimzation_surface_boric6.log";
+filename_MatData = "DATA_GOLDSIM_optimizeParameters_surface_boric6.mat";
 
 optimization_reduct = 0.015;% 0.05
 plotting_reduct = 0.01; % 0.01
@@ -23,7 +23,7 @@ tstart = datetime;
 
 %%
 
-maxEvals = 1000; %10000
+maxEvals = 5000; %10000
 %--------------------------------------------------------------------------
 %   Set initial guess at parameters
 %--------------------------------------------------------------------------
@@ -90,13 +90,14 @@ switch opt_strat
 end
 
 %%
+% [prmGlobalOpt,fval] = fmincon(F,prmGlobalOpt,[],[],[],[],lb,ub,[],hybridopts);
 fprintf("Optimal parameters are:\n")
 fprintf("\t%.6e",10.^prmGlobalOpt)
 fprintf("\n")
 % fprintf("K = %.10e;\n",prmGlobalOpt(1))
 % fprintf("E = %.10e;\n",prmGlobalOpt(2))
 fprintf("F(opt prm) = %f\n", fval)
-%%
+%
 %--------------------------------------------------------------------------
 %   Plot the optimal solutions
 %--------------------------------------------------------------------------
@@ -105,20 +106,20 @@ ic = [0.0001; 0.0003; 0.0096];
 tic
 [solOptimize, mySettingsOptimize] = GOLDSIM_simulateGoldParticles(prmGlobalOpt,optimization_reduct, ic, data_times(end));
 toc
-%%
+%
 tic
 [solAccurate, mySettingsAccurate] = GOLDSIM_simulateGoldParticles(prmGlobalOpt,plotting_reduct, ic, data_times(end));
 toc
 
 
-%%  Save data necessary for recreating plots
+%  Save data necessary for recreating plots
 save(filename_MatData);
 
 
-%%  End time for script
+%  End time for script
 tend = datetime;
 
 dur = tend-tstart;
 fprintf("Script time (hh:mm:ss): %s\n",dur)
-%%  end of diary
+%  end of diary
 diary off

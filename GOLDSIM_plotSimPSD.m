@@ -5,8 +5,8 @@ clc
 
 %%
 % load("DATA_GOLDSIM_optimizeParameters_5percent.mat");
-load("DATA_GOLDSIM_optimizeParameters_surface_boric2v2.mat");
-save_folder = fullfile('.','figures','boric2v2');
+load("DATA_GOLDSIM_optimizeParameters_surface_boric6.mat");
+save_folder = fullfile('.','figures','boric6');
 save_file_root = 'psdfit';
 
 %%  Plot the PSD that was optimized or the more accurate version?
